@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas v0.4</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;background:#f6f7f9;color:#17202a}
+main{max-width:1050px;margin:auto}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:white;border:1px solid #dde3ea;border-radius:14px;padding:16px;margin:12px 0}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.kpi{background:white;border:1px solid #dde3ea;border-radius:14px;padding:14px}
+.label{color:#65717f;font-size:12px}.value{font-size:22px;font-weight:750}label{display:block;margin-top:8px;color:#65717f;font-size:13px}
+input{width:100%;box-sizing:border-box;padding:8px;border:1px solid #cdd4dc;border-radius:8px}
+button{padding:9px 12px;border:0;border-radius:8px;background:#17202a;color:white;margin:10px 6px 0 0}
+button.secondary{background:#e9edf2;color:#17202a}button.danger{background:#8a1f1f}
+table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border-bottom:1px solid #edf0f3;text-align:left;padding:8px}
+.warn{color:#9a5b00}.small{font-size:13px;color:#65717f}.bar{height:10px;background:#e9edf2;border-radius:99px;overflow:hidden;margin-top:8px}.bar div{height:100%;background:#17202a}
+@media(max-width:850px){.grid,.kpis{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Atlas v0.4 — Personal Treasury</h1>
+<p class="small">Local web app + SQLite. Data file: <code>app/data/atlas.db</code></p>
+
+{% if error %}<div class="card warn"><b>{{ error }}</b></div>{% endif %}
+
+<div class="kpis">
+  <div class="kpi"><div class="label">Emergency</div><div class="value">€{{ "%.0f"|format(balances.EMERGENCY) }}</div><div class="bar"><div style="width:{{ progress }}%"></div></div><div class="small">{{ progress }}% of €20,000</div></div>
+  <div class="kpi"><div class="label">Investment</div><div class="value">€{{ "%.0f"|format(balances.INVESTMENT) }}</div></div>
+  <div class="kpi"><div class="label">Planned</div><div class="value">€{{ "%.0f"|format(balances.PLANNED) }}</div></div>
+  <div class="kpi"><div class="label">Operating</div><div class="value">€{{ "%.0f"|format(balances.OPERATING) }}</div></div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Generate Proposal</h2>
+    <form method="post" action="/generate">
+      <label>Income received (€)</label>
+      <input name="income" type="number" step="0.01" value="{{ income }}">
+      <label>Known planned expenses to reserve now (€)</label>
+      <input name="planned_now" type="number" step="0.01" value="{{ planned_now }}">
+      <button type="submit">Generate Proposal</button>
+    </form>
+    <form method="post" action="/seed"><button class="secondary">Seed demo balances</button></form>
+  </div>
+
+  <div class="card">
+    <h2>Policy v0.4</h2>
+    <ul>
+      <li>Planned expenses first</li>
+      <li>Emergency target: €20,000</li>
+      <li>Emergency rate: 35% / 25% / 15%</li>
+      <li>Investment minimum: 12%</li>
+      <li>Post blocked if proposal is not balanced</li>
+    </ul>
+  </div>
+</div>
+
+{% if proposal %}
+<div class="card">
+  <h2>Review / Edit Proposal</h2>
+  <form method="post" action="/post">
+    <input type="hidden" name="income" value="{{ proposal.income }}">
+    <table>
+      <thead><tr><th>Vault</th><th>Amount</th><th>Reason</th></tr></thead>
+      <tbody>
+      {% for line in proposal.lines %}
+        <tr>
+          <td><input name="vault" value="{{ line.vault }}" readonly></td>
+          <td><input name="amount" type="number" step="0.01" value="{{ line.amount }}"></td>
+          <td><input name="reason" value="{{ line.reason }}"></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="small">Income total must equal €{{ "%.2f"|format(proposal.income) }} before posting.</p>
+    <button type="submit">Post</button>
+    <a href="/"><button type="button" class="secondary">Discard</button></a>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+<h2>Ledger</h2>
+<form method="post" action="/reset" onsubmit="return confirm('Reset ledger?')"><button class="danger">Reset ledger</button></form>
+<table>
+<thead><tr><th>Date</th><th>Vault</th><th>Amount</th><th>Memo</th><th>Created</th></tr></thead>
+<tbody>
+{% for e in ledger %}
+<tr><td>{{ e.entry_date }}</td><td>{{ e.vault_code }}</td><td>€{{ "%.2f"|format(e.amount) }}</td><td>{{ e.memo }}</td><td>{{ e.created_at }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</main>
+</body>
+</html>
